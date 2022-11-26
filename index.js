@@ -1,7 +1,12 @@
 import puppeteer from 'puppeteer'
-import { open } from 'node:fs/promises'
+import getPage from './modules/getPage'
+import scrapeLinksFromPage from './modules/scrapeLinksFromPage'
+import saveDataToFile from './modules/saveDataToFile'
+import getLessonText from './modules/getLessonText'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
-;(async function () {
+import { generateLessonFileNameFromLink } from './m odules/helperFunctions'
+
+async function main() {
   const linksFileName = 'links.json'
   const homePageLink = 'https://typingtestnow.com/app/practice_lessons.html'
   const directoryName = 'lessons'
@@ -38,47 +43,8 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs'
   }
 
   browser.close()
+}
+
+;(async () => {
+  await main()
 })()
-async function getPage(browser, link) {
-  const page = await browser.newPage()
-  await page.goto(link)
-  return page
-}
-async function scrapeLinksFromPage(page, selector, filterBy) {
-  const links = await page.evaluate((selector) => {
-    return [...document.querySelectorAll(selector)].map((el) => {
-      return {
-        href: el.getAttribute('href'),
-      }
-    })
-  }, selector)
-  return links.filter(({ href }) => href.includes(filterBy))
-}
-async function saveDataToFile(data, fileName) {
-  let linksFile
-  try {
-    linksFile = await open(fileName, 'w')
-    await linksFile.write(data)
-  } finally {
-    linksFile?.close()
-  }
-}
-function generateLessonFileNameFromLink(link) {
-  return 'lesson-' + link.split('/').slice(-1)[0].slice(0, -5) + '.txt'
-}
-async function getLessonText(browser, href) {
-  const page = await getPage(browser, href)
-
-  const containerSelector = '.speed-test-container .sample-text span'
-  const lessonSelector = '.sample-text'
-
-  await page.waitForSelector(containerSelector)
-  const lessonText = await page.evaluate((selector) => {
-    return [...document.querySelectorAll(`${selector} > span`)]
-      .map((item) => item.textContent)
-      .join('')
-  }, lessonSelector)
-
-  page.close()
-  return lessonText
-}
